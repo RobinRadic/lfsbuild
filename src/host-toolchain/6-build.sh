@@ -417,7 +417,7 @@ rm -rf /sources/glibc-build
     post-build mpc-1.0.2
 }
 
-617-gcc(){
+617-gcc() {
     pre-build gcc-4.9.1
     sed -i 's/if \((code.*))\)/if (\1 \&\& \!DEBUG_INSN_P (insn))/' gcc/sched-deps.c
     patch -Np1 -i ../gcc-4.9.1-upstream_fixes-1.patch
@@ -478,8 +478,397 @@ rm -rf /sources/glibc-build
 }
 
 
+618-bzip2(){
+    pre-build bzip2-1.0.6
+    patch -Np1 -i ../bzip2-1.0.6-install_docs-1.patch
+    sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+    sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+    make -f Makefile-libbz2_so
+    make clean
+    make
+    make PREFIX=/usr install
+    cp -v bzip2-shared /bin/bzip2
+    cp -av libbz2.so* /lib
+    ln -sv ../../lib/libbz2.so.1.0 /usr/lib/libbz2.so
+    rm -v /usr/bin/{bunzip2,bzcat,bzip2}
+    ln -sv bzip2 /bin/bunzip2
+    ln -sv bzip2 /bin/bzcat
+    post-build bzip2-1.0.6
+}
 
 
+619-pkg-config(){
+    pre-build pkg-config-0.28
+    ./configure --prefix=/usr         \
+                --with-internal-glib  \
+                --disable-host-tool   \
+                --docdir=/usr/share/doc/pkg-config-0.28
+    make
+    make-check
+    make install
+    post-build pkg-config-0.28
+}
+
+620-ncurses(){
+    pre-build ncurses-5.9
+    ./configure --prefix=/usr           \
+                --mandir=/usr/share/man \
+                --with-shared           \
+                --without-debug         \
+                --enable-pc-files       \
+                --enable-widec
+    make
+    make install
+    mv -v /usr/lib/libncursesw.so.5* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libncursesw.so) /usr/lib/libncursesw.so
+    for lib in ncurses form panel menu ; do
+        rm -vf                    /usr/lib/lib${lib}.so
+        echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
+        ln -sfv lib${lib}w.a      /usr/lib/lib${lib}.a
+        ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+    done
+
+    ln -sfv libncurses++w.a /usr/lib/libncurses++.a
+
+    rm -vf                     /usr/lib/libcursesw.so
+    echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
+    ln -sfv libncurses.so      /usr/lib/libcurses.so
+    ln -sfv libncursesw.a      /usr/lib/libcursesw.a
+    ln -sfv libncurses.a       /usr/lib/libcurses.a
+
+    post-build ncurses-5.9
+}
+
+621-attr(){
+    pre-build attr-2.4.47
+    sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
+    ./configure --prefix=/usr --bindir=/bin
+    make
+    make install install-dev install-lib
+    chmod -v 755 /usr/lib/libattr.so
+    mv -v /usr/lib/libattr.so.* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
+
+    post-build attr-2.4.47
+}
+
+622-acl(){
+    pre-build acl-2.2.52
+sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
+    sed -i "s:| sed.*::g" test/{sbits-restore,cp,misc}.test
+    sed -i -e "/TABS-1;/a if (x > (TABS-1)) x = (TABS-1);" \
+        libacl/__acl_to_any_text.c
+
+    ./configure --prefix=/usr \
+            --bindir=/bin \
+            --libexecdir=/usr/lib
+    make
+    make install install-dev install-lib
+    chmod -v 755 /usr/lib/libacl.so
+    mv -v /usr/lib/libacl.so.* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libacl.so) /usr/lib/libacl.so
+
+    post-build acl-2.2.52
+}
+
+623-libcap(){
+    pre-build libcap-2.24
+    make-check
+    make RAISE_SETFCAP=no prefix=/usr install
+    chmod -v 755 /usr/lib/libcap.so
+    mv -v /usr/lib/libcap.so.* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libcap.so) /usr/lib/libcap.so
+    post-build libcap-2.24
+}
+
+624-sed(){
+    pre-build sed-4.2.2
+    ./configure --prefix=/usr --bindir=/bin --htmldir=/usr/share/doc/sed-4.2.2
+    make
+    make html
+    make-check
+    make install
+    make -C doc install-html
+    post-build sed-4.2.2
+}
+
+
+625-shadow(){
+    pre-build shadow-4.2.1
+    
+    post-build shadow-4.2.1
+}
+
+
+626-psmisc(){
+    pre-build psmisc-22.21
+
+    post-build psmisc-22.21
+}
+
+627-procps-ng(){
+    pre-build procps-ng-3.3.9
+
+    post-build procps-ng-3.3.9
+}
+
+628-e2fsprogs(){
+    pre-build e2fsprogs-1.42.12
+    
+    post-build e2fsprogs-1.42.12
+}
+
+629-coreutils(){
+    pre-build coreutils-8.23
+    
+    post-build coreutils-8.23
+}
+
+630-iana-etc(){
+    pre-build iana-etc-2.30
+    
+    post-build iana-etc-2.30
+}
+
+631-m4(){
+    pre-build m4-1.4.17
+    
+    post-build m4-1.4.17
+}
+
+632-flex(){
+    pre-build flex-2.5.39
+    
+    post-build flex-2.5.39
+}
+
+633-bison(){
+    pre-build bison-3.0.2
+    
+    post-build bison-3.0.2
+}
+
+634-grep(){
+    pre-build grep-2.20
+    
+    post-build grep-2.20
+}
+
+635-readline(){
+    pre-build readline-6.3
+    
+    post-build readline-6.3
+}
+
+636-bash(){
+    pre-build bash-4.3
+    
+    post-build bash-4.3
+}
+
+637-bc(){
+    pre-build bc-1.06.95
+    
+    post-build bc-1.06.95
+}
+
+638-libtool(){
+    pre-build libtool-2.4.2
+    
+    post-build libtool-2.4.2
+}
+
+639-gdbm(){
+    pre-build gdbm-1.11
+    
+    post-build gdbm-1.11
+}
+
+640-expat(){
+    pre-build expat-2.1.0
+    
+    post-build expat-2.1.0
+}
+
+641-inetutils(){
+    pre-build inetutils-1.9.2
+
+    post-build inetutils-1.9.2
+}
+
+642-perl(){
+    pre-build perl-5.20.0
+
+    post-build perl-5.20.0
+}
+
+643-xml-parser(){
+    pre-build xml-parser-2.42_01
+
+    post-build xml-parser-2.42_01
+}
+
+644-autoconf(){
+    pre-build autoconf-2.69
+
+    post-build autoconf-2.69
+}
+
+645-automake(){
+    pre-build automake-1.14.1
+
+    post-build automake-1.14.1
+}
+
+646-diffutils(){
+    pre-build diffutils-3.3
+
+    post-build diffutils-3.3
+}
+
+647-gawk(){
+    pre-build gawk-4.1.1
+
+    post-build gawk-4.1.1
+}
+
+648-findutils(){
+    pre-build findutils-4.4.2
+
+    post-build findutils-4.4.2
+}
+
+649-gettext(){
+    pre-build gettext-0.19.2
+
+    post-build gettext-0.19.2
+}
+
+650-intltool(){
+    pre-build intltool-0.50.2
+
+    post-build intltool-0.50.2
+}
+
+651-gperf(){
+    pre-build gperf-3.0.4
+
+    post-build gperf-3.0.4
+}
+
+652-groff(){
+    pre-build groff-1.22.2
+
+    post-build groff-1.22.2
+}
+
+653-xz(){
+    pre-build xz-5.0.5
+
+    post-build xz-5.0.5
+}
+
+654-grub(){
+    pre-build grub-2.00
+
+    post-build grub-2.00
+}
+
+655-less(){
+    pre-build less-458
+
+    post-build less-458
+}
+
+656-gzip(){
+    pre-build gzip-1.6
+
+    post-build gzip-1.6
+}
+
+657-iproute2(){
+    pre-build iproute2-3.16.0
+
+    post-build iproute2-3.16.0
+}
+
+658-kbd(){
+    pre-build kbd-2.0.2
+
+    post-build kbd-2.0.2
+}
+
+659-kmod(){
+    pre-build kmod-1
+
+    post-build kmod-1
+}
+
+660-libpipeline(){
+    pre-build libpipeline-1.3.0
+
+    post-build libpipeline-1.3.0
+}
+
+661-make(){
+    pre-build make-4.0
+
+    post-build make-4.0
+}
+
+662-patch(){
+    pre-build patch-2.7.1
+
+    post-build patch-2.7.1
+}
+
+663-sysklogd(){
+    pre-build sysklogd-1.5
+
+    post-build sysklogd-1.5
+}
+
+664-sysvinit(){
+    pre-build sysvinit-2.88dsf
+
+    post-build sysvinit-2.88dsf
+}
+
+665-tar(){
+    pre-build tar-1.28
+
+    post-build tar-1.28
+}
+
+666-texinfo(){
+    pre-build texinfo-5.2
+
+    post-build texinfo-5.2
+}
+
+667-eudev(){
+    pre-build eudev-1.10
+
+    post-build eudev-1.10
+}
+
+668-util-linux(){
+    pre-build util-linux-2.25.1
+
+    post-build util-linux-2.25.1
+}
+
+669-man-db(){
+    pre-build man-db-2.6.7.1
+
+    post-build man-db-2.6.7.1
+}
+
+670-vim(){
+    pre-build vim-7.4
+
+    post-build vim-7.4
+}
 
 
 
