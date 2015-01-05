@@ -1,0 +1,73 @@
+#!/bin/bash
+
+. config.sh
+. lib/ui.sh
+. lib/functions.sh
+. lib/builder.sh
+
+_init-builder
+
+_before(){
+    sudo rm -rf "${FOLDER_TMP}"
+    mkdir -p "${FOLDER_TMP}"
+}
+
+_after() {
+    sudo rm -rf "${FOLDER_TMP}"
+}
+
+init() {
+    _before
+    mkdir -p "${FOLDER_BUILD}/${HOST_BOX_NAME}"
+    mkdir -p "${FOLDER_BUILD}/${CLIENT_BOX_NAME}"
+    cp -r ${FOLDER_ROOT}/src/host/* ${FOLDER_TMP}/  >/dev/null 2>&1
+    cd "${FOLDER_TMP}"
+    _make-host-installer-iso
+    mv -f "${HOST_FOLDER_ISO}/custom.iso" "${FOLDER_BUILD}/host-installer.iso"
+    Echo ok "Done"
+    _after
+}
+
+
+make-host() {
+    if promptyn "This will overwrite the existing virtual machines, are you sure?"; then
+
+        # make vbox
+        _make-host-vbox
+
+        # make base-box
+        vagrant package --base "${HOST_BOX_NAME}" --output "${FOLDER_BUILD}/${HOST_BOX_NAME}.box"
+        set +o errexit
+        vagrant box remove "${HOST_BOX_NAME}" >/dev/null 2>&1
+        set -o errexit
+
+        # copy/add base-box to vagrant
+        vagrant box add "${HOST_BOX_NAME}" "${FOLDER_BUILD}/${HOST_BOX_NAME}.box"
+
+        # remove vbox
+        _unmake-host-vbox
+        rm -rf "${FOLDER_BUILD}/${HOST_BOX_NAME}"
+
+        # remove base-box
+        rm "${FOLDER_BUILD}/${HOST_BOX_NAME}.box"
+
+        # make vagrant
+        mkdir -p "${FOLDER_BUILD}/${HOST_BOX_NAME}"
+        cp -rf ${FOLDER_ROOT}/src/host-vagrant/* "${FOLDER_BUILD}/${HOST_BOX_NAME}"
+
+        # start vagrant
+        cd "${FOLDER_BUILD}/${HOST_BOX_NAME}"
+        vagrant up
+
+        Echo ok "Done"
+
+    fi
+}
+
+
+$*
+
+
+# make-host-installer
+# make-virtual-machines
+# start-host-installer

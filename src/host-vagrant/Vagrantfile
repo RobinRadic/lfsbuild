@@ -1,0 +1,24 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  lfs_disk = '../lfs-client/lfsdisk.vdi'
+
+  config.vm.box = "lfs-host"
+  config.ssh.username = 'radic'
+  config.ssh.password = 'test'
+  config.vm.synced_folder '.', '/vagrant'
+
+  config.vm.provider "virtualbox" do |vb|
+    unless File.exist?(lfs_disk)
+        vb.customize ['createhd', '--filename', lfs_disk, '--size', 40000]
+    end
+    vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', lfs_disk]
+
+    vb.gui = true
+    vb.cpus = 6
+    vb.memory = "4024"
+  end
+
+end
