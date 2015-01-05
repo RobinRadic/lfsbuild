@@ -1,7 +1,4 @@
 #!/bin/bash
-sudo chown -v lfs $LFS/tools
-sudo chown -v lfs $LFS/sources
-sudo su - lfs
 
 cat > ~/.bash_profile << "EOF"
 exec env -i HOME=$HOME TERM=$TERM PS1='\u:\w\$ ' /bin/bash

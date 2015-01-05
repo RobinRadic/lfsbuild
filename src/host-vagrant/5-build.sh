@@ -121,14 +121,17 @@ clean-tools(){
 }
 
 c-check(){
-    echo -e "${f_green}${f_bold}SANITY CHECK!${off}\n==========\nShould output something like: [Requesting program interpreter: /tools/lib/ld-linux.so.2]\n===============" 
-    cd $LFS
+    local currdir=$(pwd)
+    echo -e "${f_green}${f_bold}SANITY CHECK!${f_off}\n==========\nShould output something like: [Requesting program interpreter: /tools/lib/ld-linux.so.2]\n==============="
+
+    cd ~/
     echo 'main(){}' > dummy.c
     $LFS_TGT-gcc dummy.c
     readelf -l a.out | grep ': /tools'
     echo "================================"
     rm -v dummy.c a.out
-    echo "${f_bold}End of sanity check${f_off}" 
+    cd ${currdir}
+    echo -e "${f_bold}End of sanity check${f_off}"
 }
 
 lfs-own(){

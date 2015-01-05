@@ -50,6 +50,10 @@ make-host() {
 
         # remove base-box
         rm "${FOLDER_BUILD}/${HOST_BOX_NAME}.box"
+    fi
+}
+
+start-host() {
 
         # make vagrant
         mkdir -p "${FOLDER_BUILD}/${HOST_BOX_NAME}"
@@ -61,7 +65,8 @@ make-host() {
 
         Echo ok "Done"
 
-    fi
+        vagrant ssh
+
 }
 
 
