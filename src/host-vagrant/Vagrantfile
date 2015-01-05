@@ -8,7 +8,7 @@ Vagrant.configure(2) do |config|
   config.vm.box = "lfs-host"
   config.ssh.username = 'radic'
   config.ssh.password = 'test'
-  config.vm.synced_folder '.', '/vagrant'
+  config.vm.synced_folder '../../src/host-toolchain', '/vagrant'
 
   config.vm.provider "virtualbox" do |vb|
     unless File.exist?(lfs_disk)

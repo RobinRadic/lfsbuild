@@ -15,9 +15,8 @@
 #tar.bz2: tar -jxvf
 #tar.xz: tar -Jxvf
 
-export MAKEFLAGS='-j 6'
 SBU=30           # 30 seconds = 1 sbu when using -j 6 on my system
-runtests=1
+
 
 
     
@@ -76,7 +75,8 @@ pre-build(){
     local sbu=$3
     local diroveride=$4
     
-    echo -e "${f_cyan}${f_bold} $pkg ${f_off}"    
+    echo -e "${f_cyan}${f_bold} $pkg ${f_off}"
+    clear
     sbu $sbu
     countdown "Starting in.."
     
@@ -106,10 +106,10 @@ post-build(){
     local diroveride=$2
     cd $LFS/sources
  
-    if [ -z ${diroveride+x} ]; then 
-        rm -rf $pkg 
+    if [ -z ${diroveride} ]; then
+        rm -rf $pkg
     else 
-        rm -rf $diroveride 
+        rm -rf $diroveride
     fi
     
     echo -e "${f_green}completed: $pkg ${f_off}"
@@ -163,7 +163,8 @@ root-own(){
         x86_64) mkdir -v /tools/lib && ln -sv lib /tools/lib64 ;;
     esac
     make install
-    
+
+    rm -rf $LFS/sources/binutils-build
     # --prefix=/tools: #This tells the configure script to prepare to install the Binutils programs in the /tools directory.
     # --with-sysroot=$LFS: For cross compilation, this tells the build system to look in $LFS for the target system libraries as needed.
     # --with-lib-path=/tools/lib: This specifies which library path the linker should be configured to use.
@@ -232,6 +233,7 @@ done
     make
     make install
 
+    rm -rf $LFS/sources/gcc-build
     post-build gcc-4.9.1
 }
 
@@ -268,7 +270,8 @@ done
     
     make
     make install
-    
+
+    rm -rf $LFS/sources/glibc-build
     post-build glibc-2.20 
     c-check  
 }
@@ -299,6 +302,8 @@ build-54-to-57(){
         --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/4.9.1
     make
     make install
+
+    rm -rf $LFS/sources/gcc-build
     post-build gcc-4.9.1 
 }
 
@@ -322,6 +327,8 @@ build-54-to-57(){
     make -C ld clean
     make -C ld LIB_PATH=/usr/lib:/lib
     cp -v ld/ld-new /tools/bin
+
+    rm -rf $LFS/sources/binutils-build
     post-build binutils-2.24
 }
 
@@ -375,7 +382,8 @@ RANLIB=$LFS_TGT-ranlib                               \
     make install
     
     ln -sv gcc /tools/bin/cc
-    
+
+    rm -rf $LFS/sources/gcc-build
     post-build gcc-4.9.1
     c-check  
 }
