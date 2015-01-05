@@ -1238,4 +1238,16 @@ EOF
     670-vim
 }
 
+673-clean-tmp(){
+    rm -rf /tmp/*
+
+}
+
+
+673-clean-tools(){
+    rm -rf /tools
+}
+
+
+
 $*
