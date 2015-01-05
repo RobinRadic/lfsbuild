@@ -74,9 +74,9 @@ pre-build(){
     local tartype=$2
     local sbu=$3
     local diroveride=$4
-    
-    echo -e "${f_cyan}${f_bold} $pkg ${f_off}"
+
     clear
+    echo -e "${f_cyan}${f_bold} $pkg ${f_off}"
     sbu $sbu
     countdown "Starting in.."
     
@@ -111,9 +111,13 @@ post-build(){
     else 
         rm -rf $diroveride
     fi
-    
+
+
     echo -e "${f_green}completed: $pkg ${f_off}"
     echo -e "${f_cyan}${f_bold} ${f_off}"
+
+    countdown "Waiting a bit"
+    countdown "Waiting again.."
 }
 
 clean-tools(){
@@ -132,6 +136,7 @@ c-check(){
     rm -v dummy.c a.out
     cd ${currdir}
     echo -e "${f_bold}End of sanity check${f_off}"
+    countdown "Waiting a bit"
 }
 
 lfs-own(){

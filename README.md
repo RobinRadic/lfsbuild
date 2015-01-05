@@ -35,6 +35,7 @@ cd /vagrant
 
 
 ## todo
+
 ```bash
 # after build all
 sudo chown -R root:root $LFS/tools
