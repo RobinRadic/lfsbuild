@@ -78,7 +78,6 @@ post-build(){
     echo -e "${f_cyan}${f_bold} ${f_off}"
 
     countdown "Waiting a bit"
-    countdown "Waiting again.."
 }
 
 c-check(){
@@ -540,20 +539,21 @@ rm -rf /sources/glibc-build
 }
 
 621-attr(){
-    pre-build attr-2.4.47
+    pre-build attr-2.4.47.src attr-2.4.47
     sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
     ./configure --prefix=/usr --bindir=/bin
     make
+    make -j1 tests root-tests
     make install install-dev install-lib
     chmod -v 755 /usr/lib/libattr.so
     mv -v /usr/lib/libattr.so.* /lib
-    ln -sfv ../../lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
+    ln -sfv /lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
 
-    post-build attr-2.4.47
+    post-build attr-2.4.47.src attr-2.4.47
 }
 
 622-acl(){
-    pre-build acl-2.2.52
+    pre-build acl-2.2.52.src acl-2.2.52
 sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
     sed -i "s:| sed.*::g" test/{sbits-restore,cp,misc}.test
     sed -i -e "/TABS-1;/a if (x > (TABS-1)) x = (TABS-1);" \
@@ -568,7 +568,7 @@ sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
     mv -v /usr/lib/libacl.so.* /lib
     ln -sfv ../../lib/$(readlink /usr/lib/libacl.so) /usr/lib/libacl.so
 
-    post-build acl-2.2.52
+    post-build acl-2.2.52.src acl-2.2.52
 }
 
 623-libcap(){
@@ -595,282 +595,647 @@ sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
 
 625-shadow(){
     pre-build shadow-4.2.1
-    
+    sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+    find man -name Makefile.in -exec sed -i 's/groups\.1 / /' {} \;
+    sed -i -e 's@#ENCRYPT_METHOD DES@ENCRYPT_METHOD SHA512@' \
+           -e 's@/var/spool/mail@/var/mail@' etc/login.defs
+           sed -i 's/1000/999/' etc/useradd
+           ./configure --sysconfdir=/etc --with-group-name-max-length=32
+    make
+    make install
+    mv -v /usr/bin/passwd /bin
+
+    #To enable shadowed passwords, run the following command:
+    pwconv
+    #To enable shadowed group passwords, run:
+    #grpconv
+
+
+    # This parameter causes useradd to create a mailbox file for the newly created user. useradd will make the group ownership of this file to the mail group with 0660 permissions. If you would prefer that these mailbox files are not created by useradd, issue the following command:
+    sed -i 's/yes/no/' /etc/default/useradd
+
+    # set password for root
+    passwd root
+
     post-build shadow-4.2.1
 }
 
 
 626-psmisc(){
     pre-build psmisc-22.21
-
+    ./configure --prefix=/usr
+    make
+    make install
+    mv -v /usr/bin/fuser   /bin
+    mv -v /usr/bin/killall /bin
     post-build psmisc-22.21
 }
 
 627-procps-ng(){
     pre-build procps-ng-3.3.9
+    ./configure --prefix=/usr                           \
+                --exec-prefix=                          \
+                --libdir=/usr/lib                       \
+                --docdir=/usr/share/doc/procps-ng-3.3.9 \
+                --disable-static                        \
+                --disable-kill
+    make
+    sed -i -r 's|(pmap_initname)\\\$|\1|' testsuite/pmap.test/pmap.exp
+    make-check
+    make install
+    mv -v /usr/bin/pidof /bin
+    mv -v /usr/lib/libprocps.so.* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libprocps.so) /usr/lib/libprocps.so
 
     post-build procps-ng-3.3.9
 }
 
 628-e2fsprogs(){
     pre-build e2fsprogs-1.42.12
-    
+    mkdir -v build
+    cd build
+    LIBS=-L/tools/lib                    \
+    CFLAGS=-I/tools/include              \
+    PKG_CONFIG_PATH=/tools/lib/pkgconfig \
+    ../configure --prefix=/usr           \
+                 --bindir=/bin           \
+                 --with-root-prefix=""   \
+                 --enable-elf-shlibs     \
+                 --disable-libblkid      \
+                 --disable-libuuid       \
+                 --disable-uuidd         \
+                 --disable-fsck
+    make
+    make install
+    make install-libs
+    chmod -v u+w /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+
+    gunzip -v /usr/share/info/libext2fs.info.gz
+    install-info --dir-file=/usr/share/info/dir /usr/share/info/libext2fs.info
+    #If desired, create and install some additional documentation by issuing the following commands:
+
+    #makeinfo -o      doc/com_err.info ../lib/et/com_err.texinfo
+    #install -v -m644 doc/com_err.info /usr/share/info
+    #install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+
     post-build e2fsprogs-1.42.12
 }
 
 629-coreutils(){
     pre-build coreutils-8.23
-    
+
+    patch -Np1 -i ../coreutils-8.23-i18n-1.patch &&
+    touch Makefile.in
+    FORCE_UNSAFE_CONFIGURE=1 ./configure \
+                --prefix=/usr            \
+                --enable-no-install-program=kill,uptime
+    make
+    make install
+    mv -v /usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo} /bin
+    mv -v /usr/bin/{false,ln,ls,mkdir,mknod,mv,pwd,rm} /bin
+    /bin/mv -v /usr/bin/{rmdir,stty,sync,true,uname} /bin
+    /bin/mv -v /usr/bin/chroot /usr/sbin
+    /bin/mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
+    sed -i s/\"1\"/\"8\"/1 /usr/share/man/man8/chroot.8
+    /bin/mv -v /usr/bin/{head,sleep,nice,test,[} /bin
+
+    countdown "You should run acl again.. http://www.linuxfromscratch.org/lfs/view/stable/chapter06/acl.html"
     post-build coreutils-8.23
 }
 
 630-iana-etc(){
     pre-build iana-etc-2.30
-    
+    make
+    make install
     post-build iana-etc-2.30
 }
 
 631-m4(){
     pre-build m4-1.4.17
-    
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build m4-1.4.17
 }
 
 632-flex(){
     pre-build flex-2.5.39
-    
+    sed -i -e '/test-bison/d' tests/Makefile.in
+    ./configure --prefix=/usr --docdir=/usr/share/doc/flex-2.5.39
+    make
+    make check
+    make install
+    ln -sv flex /usr/bin/lex
+
     post-build flex-2.5.39
 }
 
 633-bison(){
     pre-build bison-3.0.2
-    
+    ./configure --prefix=/usr
+    make
+    make check
+    make install
     post-build bison-3.0.2
 }
 
 634-grep(){
     pre-build grep-2.20
-    
+    ./configure --prefix=/usr --bindir=/bin
+    make
+    make-check
+    make install
     post-build grep-2.20
 }
 
 635-readline(){
     pre-build readline-6.3
-    
+    patch -Np1 -i ../readline-6.3-upstream_fixes-2.patch
+    sed -i '/MV.*old/d' Makefile.in
+    sed -i '/{OLDSUFF}/c:' support/shlib-install
+    ./configure --prefix=/usr --docdir=/usr/share/doc/readline-6.3
+    make SHLIB_LIBS=-lncurses
+    make SHLIB_LIBS=-lncurses install
+    mv -v /usr/lib/lib{readline,history}.so.* /lib
+    ln -sfv ../../lib/$(readlink /usr/lib/libreadline.so) /usr/lib/libreadline.so
+    ln -sfv ../../lib/$(readlink /usr/lib/libhistory.so ) /usr/lib/libhistory.so
     post-build readline-6.3
 }
 
 636-bash(){
     pre-build bash-4.3
-    
+    patch -Np1 -i ../bash-4.3-upstream_fixes-3.patch
+    ./configure --prefix=/usr                    \
+            --bindir=/bin                    \
+            --docdir=/usr/share/doc/bash-4.3 \
+            --without-bash-malloc            \
+            --with-installed-readline
+    make
+    chown -Rv nobody .
+    su nobody -s /bin/bash -c "PATH=$PATH make tests"
+    make install
     post-build bash-4.3
+    exec /bin/bash --login +h
 }
 
 637-bc(){
     pre-build bc-1.06.95
-    
+    patch -Np1 -i ../bc-1.06.95-memory_leak-1.patch
+    ./configure --prefix=/usr           \
+                --with-readline         \
+                --mandir=/usr/share/man \
+                --infodir=/usr/share/info
+    make
+    #echo "quit" | ./bc/bc -l Test/checklib.b
+    make install
     post-build bc-1.06.95
 }
 
 638-libtool(){
     pre-build libtool-2.4.2
-    
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
+
     post-build libtool-2.4.2
 }
 
 639-gdbm(){
     pre-build gdbm-1.11
-    
+    ./configure --prefix=/usr --enable-libgdbm-compat
+    make
+    make-check
+    make install
     post-build gdbm-1.11
 }
 
 640-expat(){
     pre-build expat-2.1.0
-    
+    ./configure --prefix=/usr
+    make
+    make check
+    make install
+    install -v -dm755 /usr/share/doc/expat-2.1.0
+    install -v -m644 doc/*.{html,png,css} /usr/share/doc/expat-2.1.0
     post-build expat-2.1.0
 }
 
 641-inetutils(){
     pre-build inetutils-1.9.2
-
+    echo '#define PATH_PROCNET_DEV "/proc/net/dev"' >> ifconfig/system/linux.h
+    ./configure --prefix=/usr  \
+                --localstatedir=/var   \
+                --disable-logger       \
+                --disable-whois        \
+                --disable-servers
+    make
+    make-check
+    make install
+    mv -v /usr/bin/{hostname,ping,ping6,traceroute} /bin
+    mv -v /usr/bin/ifconfig /sbin
     post-build inetutils-1.9.2
 }
 
 642-perl(){
     pre-build perl-5.20.0
+    echo "127.0.0.1 localhost $(hostname)" > /etc/hosts
+    export BUILD_ZLIB=False
+    export BUILD_BZIP2=0
+    sh Configure -des -Dprefix=/usr                 \
+                      -Dvendorprefix=/usr           \
+                      -Dman1dir=/usr/share/man/man1 \
+                      -Dman3dir=/usr/share/man/man3 \
+                      -Dpager="/usr/bin/less -isR"  \
+                      -Duseshrplib
+    make
 
+    make install
+    unset BUILD_ZLIB BUILD_BZIP2
     post-build perl-5.20.0
 }
 
 643-xml-parser(){
-    pre-build xml-parser-2.42_01
+    pre-build XML-Parser-2.42_01
+    perl Makefile.PL
+    make
+    make install
 
-    post-build xml-parser-2.42_01
+    post-build XML-Parser-2.42_01
 }
 
 644-autoconf(){
     pre-build autoconf-2.69
-
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build autoconf-2.69
 }
 
 645-automake(){
     pre-build automake-1.14.1
+    ./configure --prefix=/usr --docdir=/usr/share/doc/automake-1.14.1
+    make
+    make install
+
 
     post-build automake-1.14.1
 }
 
 646-diffutils(){
     pre-build diffutils-3.3
-
+    sed -i 's:= @mkdir_p@:= /bin/mkdir -p:' po/Makefile.in.in
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build diffutils-3.3
 }
 
 647-gawk(){
     pre-build gawk-4.1.1
-
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build gawk-4.1.1
 }
 
 648-findutils(){
     pre-build findutils-4.4.2
-
+    ./configure --prefix=/usr --localstatedir=/var/lib/locate
+    make
+    make-check
+    make install
+    mv -v /usr/bin/find /bin
+    sed -i 's|find:=${BINDIR}|find:=/bin|' /usr/bin/updatedb
     post-build findutils-4.4.2
 }
 
 649-gettext(){
     pre-build gettext-0.19.2
+    ./configure --prefix=/usr --docdir=/usr/share/doc/gettext-0.19.2
+    make
+    make-check
+    make install
 
     post-build gettext-0.19.2
 }
 
 650-intltool(){
     pre-build intltool-0.50.2
-
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
+    install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.50.2/I18N-HOWTO
     post-build intltool-0.50.2
 }
 
 651-gperf(){
     pre-build gperf-3.0.4
-
+    ./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.0.4
+    make
+    make-check
+    make install
     post-build gperf-3.0.4
 }
 
 652-groff(){
     pre-build groff-1.22.2
-
+    PAGE=A4 ./configure --prefix=/usr
+    make
+    make install
     post-build groff-1.22.2
 }
 
 653-xz(){
     pre-build xz-5.0.5
-
+    ./configure --prefix=/usr --docdir=/usr/share/doc/xz-5.0.5
+    make
+    make-check
+    make install
+    mv -v   /usr/bin/{lzma,unlzma,lzcat,xz,unxz,xzcat} /bin
+    mv -v /usr/lib/liblzma.so.* /lib
+    ln -svf ../../lib/$(readlink /usr/lib/liblzma.so) /usr/lib/liblzma.so
     post-build xz-5.0.5
 }
 
 654-grub(){
     pre-build grub-2.00
-
+    sed -i -e '/gets is a/d' grub-core/gnulib/stdio.in.h
+    ./configure --prefix=/usr          \
+                --sbindir=/sbin        \
+                --sysconfdir=/etc      \
+                --disable-grub-emu-usb \
+                --disable-efiemu       \
+                --disable-werror
+    make
+    make install
     post-build grub-2.00
 }
 
 655-less(){
     pre-build less-458
-
+    ./configure --prefix=/usr --sysconfdir=/etc
+    make
+    make install
     post-build less-458
 }
 
 656-gzip(){
     pre-build gzip-1.6
-
+    ./configure --prefix=/usr --bindir=/bin
+    make
+    make-check
+    make install
+    mv -v /bin/{gzexe,uncompress,zcmp,zdiff,zegrep} /usr/bin
+    mv -v /bin/{zfgrep,zforce,zgrep,zless,zmore,znew} /usr/bin
     post-build gzip-1.6
 }
 
 657-iproute2(){
     pre-build iproute2-3.16.0
-
+    sed -i '/^TARGETS/s@arpd@@g' misc/Makefile
+    sed -i /ARPD/d Makefile
+    sed -i 's/arpd.8//' man/man8/Makefile
+    make
+    make DOCDIR=/usr/share/doc/iproute2-3.16.0 install
     post-build iproute2-3.16.0
 }
 
 658-kbd(){
     pre-build kbd-2.0.2
-
+    patch -Np1 -i ../kbd-2.0.2-backspace-1.patch
+    sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+    sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+    PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr --disable-vlock
+    make
+    make-check
+    make install
     post-build kbd-2.0.2
 }
 
 659-kmod(){
-    pre-build kmod-1
+    pre-build kmod-18
+    ./configure --prefix=/usr          \
+                --bindir=/bin          \
+                --sysconfdir=/etc      \
+                --with-rootlibdir=/lib \
+                --with-xz              \
+                --with-zlib
+    make
+    make-check
+    make install
 
-    post-build kmod-1
+    for target in depmod insmod modinfo modprobe rmmod; do
+      ln -sv ../bin/kmod /sbin/$target
+    done
+
+    ln -sv kmod /bin/lsmod
+    post-build kmod-18
 }
 
 660-libpipeline(){
     pre-build libpipeline-1.3.0
-
+    PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build libpipeline-1.3.0
 }
 
 661-make(){
     pre-build make-4.0
-
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
     post-build make-4.0
 }
 
 662-patch(){
     pre-build patch-2.7.1
+    ./configure --prefix=/usr
+    make
+    make-check
+    make install
 
     post-build patch-2.7.1
 }
 
 663-sysklogd(){
     pre-build sysklogd-1.5
+sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+make
+make BINDIR=/sbin install
+
+cat > /etc/syslog.conf << "EOF"
+# Begin /etc/syslog.conf
+
+auth,authpriv.* -/var/log/auth.log
+*.*;auth,authpriv.none -/var/log/sys.log
+daemon.* -/var/log/daemon.log
+kern.* -/var/log/kern.log
+mail.* -/var/log/mail.log
+user.* -/var/log/user.log
+*.emerg *
+
+# End /etc/syslog.conf
+EOF
 
     post-build sysklogd-1.5
 }
 
 664-sysvinit(){
     pre-build sysvinit-2.88dsf
+patch -Np1 -i ../sysvinit-2.88dsf-consolidated-1.patch
+make -C src
+make -C src install
 
     post-build sysvinit-2.88dsf
 }
 
 665-tar(){
     pre-build tar-1.28
+    FORCE_UNSAFE_CONFIGURE=1  \
+    ./configure --prefix=/usr \
+                --bindir=/bin
+
+    make
+    make-check
+    make install
+    make -C doc install-html docdir=/usr/share/doc/tar-1.28
 
     post-build tar-1.28
 }
 
 666-texinfo(){
     pre-build texinfo-5.2
+./configure --prefix=/usr
+    make
+    make-check
+    make install
+    #make TEXMF=/usr/share/texmf install-tex
+
 
     post-build texinfo-5.2
 }
 
 667-eudev(){
     pre-build eudev-1.10
+    sed -r -i 's|/usr(/bin/test)|\1|' test/udev-test.pl
+    BLKID_CFLAGS=-I/tools/include       \
+    BLKID_LIBS='-L/tools/lib -lblkid'   \
+    ./configure --prefix=/usr           \
+                --bindir=/sbin          \
+                --sbindir=/sbin         \
+                --libdir=/usr/lib       \
+                --sysconfdir=/etc       \
+                --libexecdir=/lib       \
+                --with-rootprefix=      \
+                --with-rootlibdir=/lib  \
+                --enable-split-usr      \
+                --enable-libkmod        \
+                --enable-rule_generator \
+                --enable-keymap         \
+                --disable-introspection \
+                --disable-gudev         \
+                --disable-gtk-doc-html  \
+                --with-firmware-path=/lib/firmware
 
+    make
+    mkdir -pv /lib/{firmware,udev}
+    mkdir -pv /lib/udev/rules.d
+    mkdir -pv /etc/udev/rules.d
+    make-check
+    make install
+    tar -xvf ../eudev-1.10-manpages.tar.bz2 -C /usr/share
+    tar -xvf ../udev-lfs-20140408.tar.bz2
+    make -f udev-lfs-20140408/Makefile.lfs install
     post-build eudev-1.10
 }
 
 668-util-linux(){
     pre-build util-linux-2.25.1
+    mkdir -pv /var/lib/hwclock
+    sed -e 's/2^64/(2^64/' -e 's/E </E) <=/' -e 's/ne /eq /' \
+        -i tests/ts/ipcs/limits2
 
+    ./configure ADJTIME_PATH=/var/lib/hwclock/adjtime \
+            --docdir=/usr/share/doc/util-linx-2.25.1
+
+    make
+    make install
     post-build util-linux-2.25.1
 }
 
 669-man-db(){
     pre-build man-db-2.6.7.1
+    ./configure --prefix=/usr                          \
+                --docdir=/usr/share/doc/man-db-2.6.7.1 \
+                --sysconfdir=/etc                      \
+                --disable-setuid                       \
+                --with-browser=/usr/bin/lynx           \
+                --with-vgrind=/usr/bin/vgrind          \
+                --with-grap=/usr/bin/grap
+    make
+    make-check
+    make install
 
     post-build man-db-2.6.7.1
 }
 
 670-vim(){
     pre-build vim-7.4
+    echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+    ./configure --prefix=/usr
+    make
+    make install
+    ln -sv vim /usr/bin/vi
+    for L in  /usr/share/man/{,*/}man1/vim.1; do
+        ln -sv vim.1 $(dirname $L)/vi.1
+    done
+    ln -sv ../vim/vim74/doc /usr/share/doc/vim-7.4
+
+cat > /etc/vimrc << "EOF"
+" Begin /etc/vimrc
+
+set nocompatible
+set backspace=2
+syntax on
+if (&term == "iterm") || (&term == "putty")
+  set background=dark
+endif
+
+" End /etc/vimrc
+EOF
+
 
     post-build vim-7.4
 }
 
-
-
+653-to-670(){
+    653-xz
+    654-grub
+    655-less
+    656-gzip
+    657-iproute2
+    658-kbd
+    659-kmod
+    660-libpipeline
+    661-make
+    662-patch
+    663-sysklogd
+    664-sysvinit
+    665-tar
+    666-texinfo
+    667-eudev
+    668-util-linux
+    669-man-db
+    670-vim
+}
 
 $*
