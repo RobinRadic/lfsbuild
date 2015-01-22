@@ -50,6 +50,8 @@ make-host() {
 
         # remove base-box
         rm "${FOLDER_BUILD}/${HOST_BOX_NAME}.box"
+
+        Echo ok "Done"
     fi
 }
 
@@ -69,7 +71,11 @@ start-host() {
 
 }
 
-
+clean() {
+    VBoxManage unregistervm lfs-host
+    rm -rf build
+    rm -rf .tmp
+}
 $*
 
 

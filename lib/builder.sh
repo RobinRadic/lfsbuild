@@ -68,7 +68,7 @@ _make-host-installer-iso() {
     # download the installation disk if you haven't already or it is corrupted somehow
     Echo "Downloading `basename ${ISO_URL}` ..."
     if [ ! -e "${ISO_FILENAME}" ]; then
-      curl --output "${ISO_FILENAME}" -L "${ISO_URL}"
+      curl -o "${ISO_FILENAME}" -L "${ISO_URL}"
     fi
 
     # make sure download is right...
@@ -185,12 +185,6 @@ _make-host-vbox() {
             --controller PIIX4 \
             --hostiocache on
 
-        VBoxManage storageattach "${HOST_BOX_NAME}" \
-            --storagectl "IDE Controller" \
-            --port 1 \
-            --device 0 \
-            --type dvddrive \
-            --medium "${HOST_FOLDER_ISO}/custom.iso"
 
         VBoxManage storagectl "${HOST_BOX_NAME}" \
             --name "SATA Controller" \

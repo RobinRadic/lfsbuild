@@ -2,3 +2,5 @@
 .git/
 build/
 .tmp/
+src/host-toolchain/wget-list
+src/host-toolchain/wget-list.*

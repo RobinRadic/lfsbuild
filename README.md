@@ -1,37 +1,10 @@
 # lfsbuild
 
-## Requirements
-- VirtualBox
-- Vagrant
-- 7z
-- curl
+My semi-automated LFS build scripts.
+- Downloads the debian netinstaller, extracts it, alters it, adds pre-seed, packs it up again. Resulting in a auto-install iso.
+- Creates a virtualbox with disks, mounts the altered iso, installs the host system and transforms it into a vagrant box.
+- Prepares the host system, compiles the packages for it.
 
-## Getting started
-```bash
-git clone http://github.com/robinradic/lfsbuild
-cd lfsbuild
-./lfsbuilder make-installer
-./lfsbuilder make-host
-./lfsbuilder start-host
+etc etc.
 
-# Should be in the vm now
-cd /vagrant
-./10-makedisk.sh
-./20-download-packages.sh
-./30-add-lfs-user.sh
-./40-login.sh
-
-# should be logged in as lfs
-cd /vagrant
-./41-first-login.sh
-./5-build.sh <what to build>
-# ./5-build.sh build-54-to-57
-# ./5-build.sh build-58-to-510
-# ./5-build.sh build-511-to-518
-# ./5-build.sh build-519-to-534
-# OR ./5-build.sh build-all
-
-./6-build.sh <what to build>
-# figureitout
-```
-
+[Check out my blog post covering the whole procedure from a to z.](http://robin.radic.nl/linux-from-scratch)
