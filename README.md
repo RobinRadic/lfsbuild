@@ -7,4 +7,4 @@ My semi-automated LFS build scripts.
 
 etc etc.
 
-[Check out my blog post covering the whole procedure from a to z.](http://robin.radic.nl/linux-from-scratch)
+[Check out my blog post covering the whole procedure from a to z.](https://robin.radic.ninja/linux-from-scratch)
